@@ -1,3 +1,5 @@
 # Ignore semua file
 *
 !*.py
+!merge_file_to_txt/
+!combine_files/
