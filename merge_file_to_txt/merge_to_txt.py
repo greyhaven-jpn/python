@@ -153,25 +153,42 @@ def iter_target_files_pruned(root: Path, cfg):
 # ============================
 # Tambahan: Buat PDF dari TXT
 # ============================
+from reportlab.lib.pagesizes import A0, landscape
+from reportlab.platypus import SimpleDocTemplate, Paragraph
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.lib.units import mm
+
 def create_pdf_from_txt(txt_path: Path):
     pdf_path = txt_path.with_suffix(".pdf")
     text = txt_path.read_text(encoding="utf-8", errors="replace")
 
-    c = canvas.Canvas(str(pdf_path), pagesize=A4)
-    width, height = A4
+    # Gunakan A0 landscape
+    doc = SimpleDocTemplate(
+        str(pdf_path),
+        pagesize=landscape(A0),
+        leftMargin=20 * mm,
+        rightMargin=20 * mm,
+        topMargin=20 * mm,
+        bottomMargin=20 * mm,
+    )
 
-    x = 20 * mm
-    y = height - 20 * mm
-    line_height = 6 * mm
+    styles = getSampleStyleSheet()
+    style = styles["Normal"]
+    style.fontName = "Courier"  # cocok untuk kode
+    style.fontSize = 8          # ukuran kecil agar muat banyak
+    style.leading = 10          # jarak antar baris
 
+    # Bungkus teks panjang agar tidak terpotong
+    paragraphs = []
     for line in text.splitlines():
-        c.drawString(x, y, line)
-        y -= line_height
-        if y < 20 * mm:
-            c.showPage()
-            y = height - 20 * mm
+        if line.strip() == "":
+            paragraphs.append(Paragraph("<br/>", style))
+        else:
+            # Escape karakter HTML agar kode tidak rusak
+            safe_line = line.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+            paragraphs.append(Paragraph(safe_line, style))
 
-    c.save()
+    doc.build(paragraphs)
     return pdf_path
 
 def merge_folder(cfg) -> None:
