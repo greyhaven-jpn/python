@@ -1,11 +1,16 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# test 
+
 import sys
 import os
 import ast
 from pathlib import Path
 from datetime import datetime
+
+# Tambahan untuk PDF
+from reportlab.pdfgen import canvas
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.units import mm
 
 def read_text_with_fallback(file_path: Path) -> str:
     encodings = ["utf-8", "cp932", "latin-1"]
@@ -145,6 +150,30 @@ def iter_target_files_pruned(root: Path, cfg):
             if should_include_file(p, cfg):
                 yield p
 
+# ============================
+# Tambahan: Buat PDF dari TXT
+# ============================
+def create_pdf_from_txt(txt_path: Path):
+    pdf_path = txt_path.with_suffix(".pdf")
+    text = txt_path.read_text(encoding="utf-8", errors="replace")
+
+    c = canvas.Canvas(str(pdf_path), pagesize=A4)
+    width, height = A4
+
+    x = 20 * mm
+    y = height - 20 * mm
+    line_height = 6 * mm
+
+    for line in text.splitlines():
+        c.drawString(x, y, line)
+        y -= line_height
+        if y < 20 * mm:
+            c.showPage()
+            y = height - 20 * mm
+
+    c.save()
+    return pdf_path
+
 def merge_folder(cfg) -> None:
     input_dir = cfg["INPUT_DIR"]
     output_file = cfg["OUTPUT_FILE"]
@@ -182,12 +211,17 @@ def merge_folder(cfg) -> None:
         out.write(" MERGE END\n")
         out.write("========================================\n")
 
+    # Buat PDF setelah TXT selesai
+    pdf_path = create_pdf_from_txt(output_file)
+    print(f"PDF created: {pdf_path}")
+
 def main():
     try:
         settings_path = Path(__file__).with_name("setting.md")
         cfg = load_settings(settings_path)
         merge_folder(cfg)
         print(f"Done. Output written to: {cfg['OUTPUT_FILE'].resolve()}")
+        print(f"PDF also generated.")
     except Exception as e:
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
